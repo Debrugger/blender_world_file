@@ -18,9 +18,13 @@ target_file.write(title)
 target_file.write("\n")
 
 obj_counter=0
+
 for i in obj_list:
     target_file.write("object_name=")
     target_file.write(str(i))
+    target_file.write("\n")
+    target_file.write("mesh=")
+    target_file.write(str(bpy.data.objects[obj_counter].data.name))
     target_file.write("\n")
     target_file.write("object_coords=")
     target_file.write(str(bpy.data.objects[obj_counter].location[0]))
