@@ -26,19 +26,22 @@ for i in obj_list:
     target_file.write(str(i.data.name))
     target_file.write("\n")
     target_file.write("object_coords=")
-    for a in range(0, 2):
+    for a in range(0, 3):
         target_file.write(str(i.location[a]))
-        target_file.write(" ")
+        if a!=2:
+            target_file.write(",")
     target_file.write("\n")
     target_file.write("object_scale=")
-    for a in range(0, 2):
+    for a in range(0, 3):
         target_file.write(str(i.scale[a]))
-        target_file.write(" ")
+        if a!=2:
+            target_file.write(",")
     target_file.write("\n")
     target_file.write("object_rotation=")
-    for a in range(0, 2):
+    for a in range(0, 3):
         target_file.write(str(i.rotation_euler[a]))
-        target_file.write(" ")
+        if a!=2:
+            target_file.write(",")
     target_file.write("\n")
     target_file.write("\n")
     
