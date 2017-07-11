@@ -95,11 +95,14 @@ def main():
                 object_list.append(ob)
             elif ob.type == "EMPTY" and ob.name.startswith("spawn") and generate_spawns:
                 spawn_list.append(ob)
-    print("Found %d objects and %d spawnpoints\n" % (len(object_list), len(spawn_list)))
+    print("\nFound %d objects and %d spawnpoints\n" % (len(object_list), len(spawn_list)))
     
     filename = os.path.join(root_dir, map_name + ".nst")
     action_filename = os.path.join(root_dir, map_name + "_actions.nst")
-    print("Writing to file %s" % filename)
+    action_file_exists = False
+    if os.path.isfile(action_filename):
+        print("Action file already exists, it will not be overwritten.")
+        action_file_exists = True
     #open(filename, 'w').close() #to clear the contents of the file
 
     file = open(filename, 'w')
@@ -107,7 +110,7 @@ def main():
     write_objects(file, object_list)
     if generate_spawns:
         write_spawns(file, spawn_list)
-    if generate_actions:
+    if generate_actions and not action_file_exists:
         write_action_boilerplate(action_filename, object_list)
     file.close()
     print("Done!")
