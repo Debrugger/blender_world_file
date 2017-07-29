@@ -2,8 +2,9 @@ import sys
 import os
 import argparse
 import bpy
+import shutil
 
-def write_objects(f, objects):
+def write_objects(f, objects, tex_dir):
     f.write("{objects}\n")
     for i in objects:
         f.write("[%s]\n" % str(i.name)) #write object name header
@@ -30,13 +31,40 @@ def write_objects(f, objects):
                 f.write(",")
         f.write("\n\n")
 
-        f.write("tex_diff=" + "\n")
-        f.write("tex_spec=" + "\n")
-        f.write("tex_nrm=" + "\n")
+        try:
+            diff_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots['diffuse'].texture.image.filepath_raw))
+        except:
+            diff_path = ""
+        try:
+            spec_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots['specular'].texture.image.filepath_raw))
+        except:
+            spec_path = ""
+        try:
+            nrm_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots['normal'].texture.image.filepath_raw))
+        except:
+            nrm_path = ""
 
-        f.write("[/%s]\n" % str(i.name))
-        f.write("\n")
-    f.write("{/objects}\n\n")
+        try:
+            f.write("tex_diff=" + os.path.basename(diff_path) + "\n")
+            if diff_path != "": shutil.copy2(diff_path, tex_dir)
+        except:
+            print("Could not copy file from %s to %s" % (diff_path, tex_dir))
+
+        try:
+            f.write("tex_spec=" + os.path.basename(spec_path) + "\n")
+            if spec_path != "": shutil.copy2(spec_path, tex_dir)
+        except:
+            print("Could not copy file from %s to %s" % (spec_path, tex_dir))
+
+        try:
+            f.write("tex_nrm=" + os.path.basename(nrm_path) + "\n")
+            if nrm_path != "": shutil.copy2(nrm_path, tex_dir)
+        except:
+            print("Could not copy file from %s to %s" % (nrm_path, tex_dir))
+
+            f.write("[/%s]\n" % str(i.name))
+            f.write("\n")
+            f.write("{/objects}\n\n")
 
 def write_spawns(f, spawns):
     f.write("{spawnpoints}\n")    
@@ -60,6 +88,15 @@ def write_action_boilerplate(filename, objects):
         f.write("[/%s]\n\n" % o.name)
     f.close()
 
+def export_objects(objects, dir):
+    print("object dir", dir)
+    for o in objects:
+        o.select = False
+    for o in objects:
+        o.select = True
+        bpy.ops.export_scene.obj(filepath = os.path.join(dir,  o.data.name) + ".obj", use_selection = True, use_materials = False)
+        o.select = False
+
 #create directories for map
 def main():
     parser = argparse.ArgumentParser(description = "Generate an NST map data file from a scene in blender. This program is made to be executed from the Blender python environment.")
@@ -81,10 +118,13 @@ def main():
 
     root_dir = os.path.join(out_dir, map_name)
     obj_dir = os.path.join(root_dir, "objects")
+    tex_dir = os.path.join(root_dir, "textures")
     if not os.path.isdir(root_dir):
             os.makedirs(root_dir)
     if not os.path.isdir(obj_dir):
             os.makedirs(obj_dir)
+    if not os.path.isdir(tex_dir):
+            os.makedirs(tex_dir)
     print("\n\nStarting to generate map file\n")
 
     object_list = []
@@ -105,9 +145,11 @@ def main():
         action_file_exists = True
     #open(filename, 'w').close() #to clear the contents of the file
 
+    export_objects(object_list, obj_dir)
+
     file = open(filename, 'w')
     file.write("<" + map_name + ">\n\n")
-    write_objects(file, object_list)
+    write_objects(file, object_list, tex_dir)
     if generate_spawns:
         write_spawns(file, spawn_list)
     if generate_actions and not action_file_exists:
