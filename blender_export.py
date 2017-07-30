@@ -89,13 +89,15 @@ def write_action_boilerplate(filename, objects):
     f.close()
 
 def export_objects(objects, dir):
-    print("object dir", dir)
+    lookup = {}     #only export every mesh once, if we already exported it skip
     for o in objects:
         o.select = False
     for o in objects:
-        o.select = True
-        bpy.ops.export_scene.obj(filepath = os.path.join(dir,  o.data.name) + ".obj", use_selection = True, use_materials = False)
-        o.select = False
+        if not o.data.name in lookup.values():
+            lookup[o.data.name] = True
+            o.select = True
+            bpy.ops.export_scene.obj(filepath = os.path.join(dir,  o.data.name) + ".obj", use_selection = True, use_materials = False)
+            o.select = False
 
 #create directories for map
 def main():
