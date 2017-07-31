@@ -3,8 +3,11 @@ import os
 import argparse
 import bpy
 import shutil
+import subprocess
+from PIL import Image
+import imghdr
 
-def write_objects(f, objects, tex_dir):
+def write_objects(f, objects, tex_dir, convert_textures):
     f.write("{objects}\n")
     for i in objects:
         f.write("[%s]\n" % str(i.name)) #write object name header
@@ -32,35 +35,33 @@ def write_objects(f, objects, tex_dir):
         f.write("\n\n")
 
         try:
-            diff_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots['diffuse'].texture.image.filepath_raw))
+            diff_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots[0].texture.image.filepath_raw))
         except:
             diff_path = ""
-        try:
-            spec_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots['specular'].texture.image.filepath_raw))
-        except:
-            spec_path = ""
-        try:
-            nrm_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots['normal'].texture.image.filepath_raw))
-        except:
-            nrm_path = ""
+        #try:
+        #    spec_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots[1].texture.image.filepath_raw))
+        #except:
+        #    spec_path = ""
+        #try:
+        #    nrm_path = os.path.realpath(bpy.path.abspath(i.material_slots[0].material.texture_slots[2].texture.image.filepath_raw))
+        #except:
+        #    nrm_path = ""
 
-        try:
-            f.write("tex_diff=" + os.path.basename(diff_path) + "\n")
-            if diff_path != "": shutil.copy2(diff_path, tex_dir)
-        except:
-            print("Could not copy file from %s to %s" % (diff_path, tex_dir))
-
-        try:
-            f.write("tex_spec=" + os.path.basename(spec_path) + "\n")
-            if spec_path != "": shutil.copy2(spec_path, tex_dir)
-        except:
-            print("Could not copy file from %s to %s" % (spec_path, tex_dir))
-
-        try:
-            f.write("tex_nrm=" + os.path.basename(nrm_path) + "\n")
-            if nrm_path != "": shutil.copy2(nrm_path, tex_dir)
-        except:
-            print("Could not copy file from %s to %s" % (nrm_path, tex_dir))
+        #try:
+        if diff_path != "":
+            handle_image(diff_path, tex_dir, "tex_diff", convert_textures, f)
+        #except:
+        #    print("Could not copy file from %s to %s" % (diff_path, tex_dir))
+        
+        #try:
+        #    handle_image(spec_path, tex_dir, "tex_spec", convert_textures, f)
+        #except:
+        #    print("Could not copy file from %s to %s" % (spec_path, tex_dir))
+        #
+        #try:
+        #    handle_image(nrm_path, tex_dir, "tex_nrm", convert_textures, f)
+        #except:
+        #    print("Could not copy file from %s to %s" % (nrm_path, tex_dir))
 
             f.write("[/%s]\n" % str(i.name))
             f.write("\n")
@@ -99,6 +100,23 @@ def export_objects(objects, dir):
             bpy.ops.export_scene.obj(filepath = os.path.join(dir,  o.data.name) + ".obj", use_selection = True, use_materials = False)
             o.select = False
 
+def handle_image(src_path, dst_path, tex_name, convert, file):
+    img_name = os.path.splitext(os.path.basename(src_path))[0]
+    ext = os.path.splitext(os.path.basename(src_path))[1]
+    if convert and imghdr.what(src_path) != "png":
+        w, h = Image.open(src_path).size
+        command = ["convert", src_path]
+        if w * h > 1024 * 1024:
+            command.append("-resize")
+            command.append("1024x")
+        command.append(os.path.join(dst_path, img_name + ".png"))
+        subprocess.call(command)
+    else:
+        print("Copying %s to %s" % (src_path, dst_path))
+        shutil.copy2(src_path, dst_path)
+    file.write(tex_name + "=" + os.path.basename(src_path) + "\n" if convert else (img_name + ".png\n"))
+
+
 #create directories for map
 def main():
     parser = argparse.ArgumentParser(description = "Generate an NST map data file from a scene in blender. This program is made to be executed from the Blender python environment.")
@@ -107,6 +125,7 @@ def main():
     parser.add_argument("--layer", "-l", type = int, default = 0, help = "layer in Blender scene to load objects from (zero-indexed, default=0)")
     parser.add_argument("--actions", "-a", action = "store_true", help = "generate an extra boilerplate file for actions such as animating objects to edit it manually") 
     parser.add_argument("--no-spawns", action = "store_true", help = "don't include spawn points in map")
+    parser.add_argument("--convert-textures", "-c", action = "store_true", help = "convert all textures to PNG")
 
     argv = sys.argv
     argv = argv[argv.index("--") + 1:]  # get all args after "--"
@@ -151,7 +170,7 @@ def main():
 
     file = open(filename, 'w')
     file.write("<" + map_name + ">\n\n")
-    write_objects(file, object_list, tex_dir)
+    write_objects(file, object_list, tex_dir, args.convert_textures)
     if generate_spawns:
         write_spawns(file, spawn_list)
     if generate_actions and not action_file_exists:
